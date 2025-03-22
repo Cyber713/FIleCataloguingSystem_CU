@@ -1,4 +1,6 @@
+import hashlib
 import os
+import threading
 from enum import Enum
 import asyncio
 import pymysql
@@ -18,7 +20,7 @@ class Errors(Enum):
 
 class FileEntry:
     def __init__(
-        self, id: int = None, name: str = None, abs_path: str = None, type: FileType = None,
+        self, id: int = None, name: str = None, abs_path: str = None,abs_path_hash:str = None, type: FileType = None,
         parent_id: int = None, parent_path: str = None, size: int = None
     ):
         self._id = id
@@ -28,6 +30,7 @@ class FileEntry:
         self._parent_id = parent_id
         self._parent_path = parent_path
         self._size = size
+        self._abs_path_hash = abs_path_hash
 
     def __str__(self):
         return (
@@ -47,6 +50,10 @@ class FileEntry:
     @property
     def abs_path(self):
         return self._abs_path
+
+    @property
+    def abs_path_hash(self):
+        return self._abs_path_hash
 
     @property
     def type(self):
@@ -73,6 +80,8 @@ class DatabaseManager:
         self.passwd =passwd
         self.database = database
         self.error_code = Errors.EVERYTHING_IS_FINE
+        self.lock = threading.Lock()
+
         try:
             self.selfcheck(host, port, user, passwd, database)
             self.connection = pymysql.connect(host=host, port=port, user=user, passwd=passwd, db=database)
@@ -118,64 +127,71 @@ class DatabaseManager:
         ]
 
     def insert(self, entry: FileEntry):
-        query = """INSERT INTO Files_And_Directories (name, type, parent_id, absolute_path, size) VALUES (%s, %s, %s, %s, %s)"""
-        self.cursor.execute(query, (entry.name, entry.type.value, entry.parent_id, entry.abs_path, entry.size))
+        """ Inserts a file/directory entry into the database, ignoring duplicates """
+        query = """INSERT IGNORE INTO Files_And_Directories (name, type, parent_id, absolute_path, size, absolute_path_hash) 
+                    VALUES (%s, %s, %s, %s, %s, %s)"""
+        self.cursor.execute(query, (
+            entry.name, entry.type.value, entry.parent_id, entry.abs_path, entry.size, entry.abs_path_hash
+        ))
         self.connection.commit()
-        return self.cursor.lastrowid
+        return self.cursor.lastrowid if self.cursor.rowcount > 0 else None  # Return ID only if inserted
 
     async def insert_directory_to_db(self, directory_path: str, parent_id: int = None):
+        """ Async wrapper for directory insertion using a thread """
         await asyncio.to_thread(self._insert_directory_to_db, directory_path, parent_id)
 
     def _insert_directory_to_db(self, directory_path: str, parent_id: int = None):
-        """ Inserts a directory and its contents recursively while preventing duplicates """
+        """ Recursively inserts a directory and its contents, skipping duplicates using hashes """
         self.ensure_connection()
-        self.cursor.execute("SELECT id FROM Files_And_Directories WHERE absolute_path = %s", (directory_path,))
+
+        dir_hash = self.hash_path(directory_path)
+        self.cursor.execute("SELECT id FROM Files_And_Directories WHERE absolute_path_hash = %s", (dir_hash,))
         existing = self.cursor.fetchone()
 
         if existing:
             new_parent_id = existing[0]  # ✅ Use existing ID if directory exists
         else:
-            dir_name = os.path.basename(directory_path)
             file_entry = FileEntry(
-                name=dir_name,
+                name=os.path.basename(directory_path),
                 abs_path=directory_path,
                 type=FileType.DIRECTORY,
                 parent_id=parent_id,
-                size=None
+                size=None,
+                abs_path_hash=dir_hash
             )
             new_parent_id = self.insert(file_entry)  # Insert and get new ID
 
         for entry in os.scandir(directory_path):
             entry_type = FileType.DIRECTORY if entry.is_dir() else FileType.FILE
             entry_size = os.path.getsize(entry.path) if entry.is_file() else None
+            entry_hash = self.hash_path(entry.path)
 
-            # ✅ Check if this entry (file/folder) already exists
-            self.ensure_connection()
-            self.cursor.execute("SELECT id FROM Files_And_Directories WHERE absolute_path = %s", (entry.path,))
+            # ✅ Skip duplicate entries using hash
+            self.cursor.execute("SELECT id FROM Files_And_Directories WHERE absolute_path_hash = %s", (entry_hash,))
             if self.cursor.fetchone():
-                continue  # Skip duplicate entries
+                continue  # Skip if already exists
 
             file_entry = FileEntry(
                 name=entry.name,
                 abs_path=entry.path,
                 type=entry_type,
                 parent_id=new_parent_id,
-                size=entry_size
+                size=entry_size,
+                abs_path_hash=entry_hash
             )
             child_id = self.insert(file_entry)
 
-            # ✅ Recursively insert subdirectories
             if entry.is_dir():
-                 self._insert_directory_to_db(entry.path, child_id)
+                self._insert_directory_to_db(entry.path, child_id)
 
-    def delete_directory(self, parent_id):
+    async def delete_directory(self, parent_id):
         if not parent_id:
             print("Error here")
             return
         self.cursor.execute("SELECT id FROM Files_And_Directories WHERE parent_id = %s", (parent_id,))
         child_ids = [row[0] for row in self.cursor.fetchall()]
         for child_id in child_ids:
-            self.delete_directory(child_id)
+            await self.delete_directory(child_id)
         self.cursor.execute("DELETE FROM Files_And_Directories WHERE id = %s", (parent_id,))
         print(f"DELETE FROM Files_And_Directories WHERE id = {parent_id}")
         self.connection.commit()
@@ -208,6 +224,7 @@ class DatabaseManager:
                 parent_id INT NULL,
                 absolute_path VARCHAR(1024) NOT NULL,
                 size BIGINT DEFAULT NULL,
+                absolute_path_hash VARCHAR(64) NOT NULL UNIQUE,
                 FOREIGN KEY (parent_id) REFERENCES Files_And_Directories(id),
                 INDEX idx_parent_id (parent_id)
             );"""
@@ -215,6 +232,9 @@ class DatabaseManager:
         test.commit()
         test_cursor.close()
         test.close()
+
+    def hash_path(self,path):
+        return hashlib.sha256(path.encode()).hexdigest()
 
     def ensure_connection(self):
         try:

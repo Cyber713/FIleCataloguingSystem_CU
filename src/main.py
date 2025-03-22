@@ -8,9 +8,10 @@ import flet as ft
 
 from units import DatabaseManager, FileType, FileEntry
 
+
 def main(page: ft.Page):
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    db = DatabaseManager("localhost", 3306, "root", "@", "File_Management")
+    db = DatabaseManager("localhost", 3306, "root", "@CyBeR0000", "File_Management")
     db.ensure_connection()
     result_list = db.fetch_all_files()
     for entry in result_list:
@@ -29,7 +30,7 @@ def main(page: ft.Page):
     async def update_list_search(e):
         nonlocal result_list
         result_list = db.search_with_keywords(search_field.value)
-        populate_lv(list_view, result_list, page,db)
+        populate_lv(list_view, result_list, page, db)
 
     search_field.on_submit = update_list_search
     reset_filter = ft.IconButton(icon=ft.Icons.CANCEL, icon_color="red", icon_size=30, expand=1)
@@ -64,7 +65,7 @@ def main(page: ft.Page):
             elif by == "T":
                 result_list.sort(key=lambda x: x.name if x.name is not None else "", reverse=True)
 
-        populate_lv(list_view, result_list, page,db)
+        populate_lv(list_view, result_list, page, db)
 
     async def update_filters(w):
         if w == "S":
@@ -91,7 +92,7 @@ def main(page: ft.Page):
             search_field.value = ""
             db.ensure_connection()
             result_list = db.fetch_all_files()
-            populate_lv(list_view, result_list, page,db)
+            populate_lv(list_view, result_list, page, db)
 
         page.update()
 
@@ -123,7 +124,7 @@ def main(page: ft.Page):
         border_radius=8,
     )
 
-    populate_lv(list_view, result_list, page,db)
+    populate_lv(list_view, result_list, page, db)
     page.update()
 
     main_container = ft.Container(
@@ -131,7 +132,8 @@ def main(page: ft.Page):
         expand=True,
     )
 
-    directory_tf = ft.TextField(hint_text="Directory")
+    directory_tf = ft.TextField(hint_text="Directory",border_color="green")
+
     def on_dismiss(e):
         db.ensure_connection()
         result_list.clear()
@@ -140,28 +142,34 @@ def main(page: ft.Page):
         page.update()
 
     async def directory_on_submit(e):
-        path = directory_tf.value.strip()
+        value = str(directory_tf.value)
+        path = os.path.exists(value)
 
         if not path:
             print("⚠️ No directory path provided!")
+            directory_tf.border_color = "red"
+            page.update()
             return
+        directory_tf.border_color = "green"
+        page.update()
 
-        await db.insert_directory_to_db(path)
+        await db.insert_directory_to_db(value)
         db.ensure_connection()
         page.close(dlg)
-
-
 
     directory_tf.on_submit = directory_on_submit
 
     dlg = ft.AlertDialog(
         on_dismiss=on_dismiss,
         content=ft.Container(
-            width=200,
-            height=200,
-            bgcolor="white",
-            border_radius=8,
-            content=directory_tf,
+            bgcolor="#051015",
+            border_radius=4,
+            content=ft.Column(
+                tight=True,
+                controls=[         ft.Text("Enter Valid Directory and press Enter",text_align=ft.alignment.center),
+                    directory_tf,
+]
+            )
         ),
         content_padding=0, actions_padding=0, bgcolor="transparent",
     )
@@ -203,10 +211,10 @@ def populate_lv(list_view: ft.ListView, list_file_entry: list, page: ft.Page, db
         except Exception as e:
             print(f"⚠️ Error opening folder: {e}")
 
-    def delete_file(e, file_id,dialog):
+    async def delete_file(e, file_id, dialog):
         print(f"Deleting ID: {file_id}")
         db.ensure_connection()
-        db.delete_directory(file_id)
+        await db.delete_directory(file_id)
         page.close(dialog)
         refresh_list()
         page.update()
@@ -216,12 +224,19 @@ def populate_lv(list_view: ft.ListView, list_file_entry: list, page: ft.Page, db
         new_list = db.fetch_all_files()
         populate_lv(list_view, new_list, page, db)
 
-    for i in list_file_entry:
+    for entry in list_file_entry:
         if displayed_entries >= MAX_ENTRIES:
             break
         displayed_entries += 1
 
-        icon = ft.Icons.INSERT_DRIVE_FILE if i.type == "file" else ft.Icons.FOLDER
+        icon = ft.Icons.INSERT_DRIVE_FILE if entry.type == "file" else ft.Icons.FOLDER
+
+        title_text_field = ft.TextField(value=entry.name, border_color="yellow")
+
+        def updateFN(e, entry_id, text_field):
+            db.update(entry=FileEntry(id=entry_id, name=text_field.value))
+
+        title_text_field.on_submit = lambda e, eid=entry.id, tf=title_text_field: updateFN(e, eid, tf)
 
         dialog_show_parameters = ft.AlertDialog(
             on_dismiss=lambda e: refresh_list(),
@@ -231,10 +246,12 @@ def populate_lv(list_view: ft.ListView, list_file_entry: list, page: ft.Page, db
                 padding=20,
                 content=ft.Column(
                     controls=[
-                        ft.Text(value=i.name, style=ft.TextStyle(weight=ft.FontWeight.BOLD)),
+                        ft.Text(value="Title: ", style=ft.TextStyle(weight=ft.FontWeight.BOLD)),
+                        title_text_field,
+                        ft.Text(value="You can rename title name above and Press Enter to Save",size=10,color="yellow"),
                         ft.Text(value="Absolute Path:", style=ft.TextStyle(weight=ft.FontWeight.BOLD)),
-                        ft.Text(value=i.abs_path),
-                        ft.Button(text="Open Folder", on_click=partial(open_containing_folder, file_path=i.abs_path)),
+                        ft.Text(value=entry.abs_path),
+                        ft.Button(text="Open Folder", on_click=partial(open_containing_folder, file_path=entry.abs_path)),
                         ft.Text(value="⚠️ This action cannot be undone!", style=ft.TextStyle(weight=ft.FontWeight.BOLD),
                                 color="red"),
                     ]
@@ -245,7 +262,7 @@ def populate_lv(list_view: ft.ListView, list_file_entry: list, page: ft.Page, db
 
         delete_button = ft.ElevatedButton(
             text="Delete File",
-            on_click=partial(delete_file, file_id=i.id, dialog=dialog_show_parameters)
+            on_click=partial(delete_file, file_id=entry.id, dialog=dialog_show_parameters)
         )
 
         dialog_show_parameters.content.content.controls.append(delete_button)
@@ -255,7 +272,6 @@ def populate_lv(list_view: ft.ListView, list_file_entry: list, page: ft.Page, db
             page.add(d)
             page.update()
 
-        # Create file row container
         item = ft.Container(
             content=ft.Row(
                 controls=[
@@ -263,13 +279,13 @@ def populate_lv(list_view: ft.ListView, list_file_entry: list, page: ft.Page, db
                         content=ft.Row(
                             controls=[
                                 ft.Icon(icon, color="#4060F0", size=20),
-                                ft.Text(value=i.name, expand=1),
+                                ft.Text(value=entry.name, expand=1),
                             ]
                         ),
                         expand=1,
                     ),
-                    ft.Text(value=i.parent_path if i.parent_path else "Root Directory", expand=3),
-                    ft.Text(value=f"{i.size} Bytes" if i.size else "Folder", expand=1),
+                    ft.Text(value=entry.parent_path if entry.parent_path else "Root Directory", expand=3),
+                    ft.Text(value=f"{entry.size} Bytes" if entry.size else "Folder", expand=1),
                 ]
             ),
             bgcolor="#000010",
@@ -277,12 +293,11 @@ def populate_lv(list_view: ft.ListView, list_file_entry: list, page: ft.Page, db
             margin=5,
             padding=ft.Padding(left=15, right=15, bottom=10, top=10),
             border_radius=12,
-            on_click=partial(open_dialog, d=dialog_show_parameters)  # ✅ Fix: Ensure correct file info shows
+            on_click=partial(open_dialog, d=dialog_show_parameters)
         )
 
         list_view.controls.append(item)
 
-    # Append End Message
     list_view.controls.append(
         ft.Container(
             content=ft.Text(value="You reached the end", expand=1),
@@ -294,6 +309,7 @@ def populate_lv(list_view: ft.ListView, list_file_entry: list, page: ft.Page, db
     )
 
     page.update()
+
 
 def header_text_view(text_view: ft.Text, icon, expand) -> ft.Container:
     return ft.Container(
