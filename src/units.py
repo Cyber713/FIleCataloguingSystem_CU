@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import os
 import threading
@@ -38,6 +39,15 @@ class FileEntry:
             f"   path='{self._abs_path}', parent_id={self._parent_id}, parent_path='{self._parent_path}',\n"
             f"   size={'-' if self._size is None else self._size} bytes)"
         )
+    @staticmethod
+    def format_bytes(size):
+        power = 2 ** 10
+        n = 0
+        power_labels = {0: 'Bytes', 1: 'KB', 2: 'MB', 3: 'GB', 4: 'TB'}
+        while size > power:
+            size /= power
+            n += 1
+        return f'{size:.2f} {power_labels[n]}'
 
     @property
     def id(self):
@@ -137,11 +147,9 @@ class DatabaseManager:
         return self.cursor.lastrowid if self.cursor.rowcount > 0 else None  # Return ID only if inserted
 
     async def insert_directory_to_db(self, directory_path: str, parent_id: int = None):
-        """ Async wrapper for directory insertion using a thread """
         await asyncio.to_thread(self._insert_directory_to_db, directory_path, parent_id)
 
     def _insert_directory_to_db(self, directory_path: str, parent_id: int = None):
-        """ Recursively inserts a directory and its contents, skipping duplicates using hashes """
         self.ensure_connection()
 
         dir_hash = self.hash_path(directory_path)
@@ -166,10 +174,9 @@ class DatabaseManager:
             entry_size = os.path.getsize(entry.path) if entry.is_file() else None
             entry_hash = self.hash_path(entry.path)
 
-            # ✅ Skip duplicate entries using hash
             self.cursor.execute("SELECT id FROM Files_And_Directories WHERE absolute_path_hash = %s", (entry_hash,))
             if self.cursor.fetchone():
-                continue  # Skip if already exists
+                continue
 
             file_entry = FileEntry(
                 name=entry.name,
@@ -185,13 +192,16 @@ class DatabaseManager:
                 self._insert_directory_to_db(entry.path, child_id)
 
     async def delete_directory(self, parent_id):
+       await asyncio.to_thread(self._delete_directory, parent_id)
+
+    def _delete_directory(self, parent_id):
         if not parent_id:
             print("Error here")
             return
         self.cursor.execute("SELECT id FROM Files_And_Directories WHERE parent_id = %s", (parent_id,))
         child_ids = [row[0] for row in self.cursor.fetchall()]
         for child_id in child_ids:
-            await self.delete_directory(child_id)
+             self._delete_directory(child_id)
         self.cursor.execute("DELETE FROM Files_And_Directories WHERE id = %s", (parent_id,))
         print(f"DELETE FROM Files_And_Directories WHERE id = {parent_id}")
         self.connection.commit()
@@ -245,4 +255,14 @@ class DatabaseManager:
                 host=self.host, port=self.port, user=self.user, passwd=self.passwd, db=self.database
             )
             self.cursor = self.connection.cursor()
+
+
+
+
+def encode_animation(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        json_string = f.read()
+        encoded = base64.b64encode(json_string.encode("utf-8")).decode("utf-8")
+        return f"{encoded}"
+
 
