@@ -232,7 +232,7 @@ class DatabaseManager:
                 name VARCHAR(255) NOT NULL,
                 type ENUM('file', 'directory') NOT NULL,
                 parent_id INT NULL,
-                absolute_path VARCHAR(1024) NOT NULL,
+                absolute_path TEXT NOT NULL,
                 size BIGINT DEFAULT NULL,
                 absolute_path_hash VARCHAR(64) NOT NULL UNIQUE,
                 FOREIGN KEY (parent_id) REFERENCES Files_And_Directories(id),
