@@ -15,13 +15,17 @@ def get_db_credentials(filepath="credentials.json"):
     try:
         with open(filepath, "r") as f:
             credentials = json.load(f)
-            return credentials["host"], credentials["port"], credentials["user"], credentials["password"], credentials[
-                "database"]
+            host = credentials.get("host")
+            port = credentials.get("port")
+            user = credentials.get("user")
+            password = credentials.get("password")
+            database = credentials.get("database")
+            return host, port, user, password, database
     except FileNotFoundError:
         return None, None, None, None, None
     except json.JSONDecodeError:
         return None, None, None, None, None
-    except KeyError as e:
+    except TypeError:  # added type error handling
         return None, None, None, None, None
 
 
@@ -29,27 +33,50 @@ def setPageZero():
     global current_page
     current_page = 0
 
-
+credential = None
 def main(page: ft.Page):
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.theme_mode = "dark"
     page.title = "File Management"
 
     def build_UI():
+        global credential
         page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
         header_text_style = ft.TextStyle(weight=ft.FontWeight.BOLD, size=20)
         host, port, user, password, database = get_db_credentials()
-        if host is None:
-            print("No host specified")
+
+        if host is None or port is None or user is None or database is None:
             display_credential_error()
             return
+        # if password is None:
+        #     if credential is not None:
+        #         password = credential
+        #     else:
+        #         if credential is not None:
+        #             password = credential
+        #         else:
+        #             display_password_ask()
+        #             return
+        if credential is None:
+            if password is None:
+                display_password_ask()
+                return
+        else:
+            password = credential
 
         db = DatabaseManager(host=host, port=port, user=user, passwd=password, database=database)
         try:
             db.ensure_connection()
         except Exception:
-            display_auth_error()
-            return
+            if password is None:
+                display_password_ask()
+                return
+            if credential is not None:
+                display_password_ask()
+                return
+            else:
+                display_auth_error()
+                return
         result_list = db.fetch_all_files()
 
         paging_tv = ft.Text()
@@ -250,6 +277,8 @@ def main(page: ft.Page):
 
     def display_credential_error():
         page.clean()
+        global credential
+        credential = None
         page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
         page.add(ft.Text("There was an error on credential file credentials.json please fix it and refresh"))
         anim_not_found = encode_animation("anim/anim_not_found.json")
@@ -268,7 +297,7 @@ def main(page: ft.Page):
           "port": 3306,
           "database": "File_Management",
           "user": "root",
-          "password": "Your DB password"
+          "password": "Your DB password" (Optional)
         }
         """
 
@@ -277,6 +306,8 @@ def main(page: ft.Page):
 
     def display_auth_error():
         page.clean()
+        global credential
+        credential = None
         page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
         anim_auth_err = encode_animation("anim/anim_auth_fail.json")
         page.add(fl.Lottie(
@@ -288,6 +319,34 @@ def main(page: ft.Page):
         ))
         page.add(ft.Text("Wrong credentials or MYSQL server is not installed"))
         page.add(ft.IconButton(icon=ft.Icons.REFRESH, on_click=lambda e: refresh(), icon_size=30))
+        def manual_password(e):
+            global credential
+            credential = "1"
+            refresh()
+
+        page.add(ft.IconButton(icon=ft.Icons.PASSWORD, on_click= manual_password, icon_size=30))
+        page.add(ft.Text("Your auto-logon maybe configured wrongly you can enter your password manually"))
+
+    def display_password_ask():
+        page.clean()
+        page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+        column = ft.Column(
+            width=page.width,
+            height=page.height,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER
+        )
+
+        def password_on_submit(e):
+            global credential
+            credential = str(password_field.value)
+            refresh()
+        password_field = ft.TextField(hint_text="Password", max_lines=1,text_align=ft.alignment.center,password=True,can_reveal_password=True)
+        password_field.on_submit = password_on_submit
+        column.controls.append(ft.Text(value="Enter Password and press Enter",size=25,style=ft.TextStyle(weight=ft.FontWeight.BOLD)))
+        column.controls.append(password_field)
+        page.add(column)
+        page.update()
 
 
     def refresh():
