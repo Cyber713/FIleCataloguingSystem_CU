@@ -34,12 +34,12 @@ def setPageZero():
     current_page = 0
 
 credential = None
-def main(page: ft.Page):
+async def main(page: ft.Page):
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.theme_mode = "dark"
     page.title = "File Management"
 
-    def build_UI():
+    async def build_UI():
         global credential
         page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
         header_text_style = ft.TextStyle(weight=ft.FontWeight.BOLD, size=20)
@@ -81,17 +81,17 @@ def main(page: ft.Page):
 
         paging_tv = ft.Text()
 
-        def go_left(e):
+        async def go_left(e):
             global current_page
             if current_page > 0:
                 current_page -= 1
-                refresh_list_view(list_view, result_list, page, db, paging_tv)
+                await refresh_list_view(list_view, result_list, page, db, paging_tv)
 
-        def go_right(e):
+        async def go_right(e):
             global current_page
             if (current_page + 1) * files_per_page < len(result_list):
                 current_page += 1
-                refresh_list_view(list_view, result_list, page, db, paging_tv)
+                await refresh_list_view(list_view, result_list, page, db, paging_tv)
 
         left_button = ft.ElevatedButton("⬅️", on_click=go_left)
         right_button = ft.ElevatedButton("➡️", on_click=go_right)
@@ -109,7 +109,7 @@ def main(page: ft.Page):
             nonlocal result_list
             result_list = db.search_with_keywords(search_field.value)
             setPageZero()
-            refresh_list_view(list_view, result_list, page, db, paging_tv)
+            await refresh_list_view(list_view, result_list, page, db, paging_tv)
             page.update()
             list_view.scroll_to(0)
 
@@ -146,7 +146,7 @@ def main(page: ft.Page):
                 elif by == "T":
                     result_list.sort(key=lambda x: x.name if x.name is not None else "", reverse=True)
             setPageZero()
-            refresh_list_view(list_view, result_list, page, db, paging_tv)
+            await refresh_list_view(list_view, result_list, page, db, paging_tv)
             list_view.scroll_to(0)
 
         async def update_filters(w):
@@ -175,7 +175,7 @@ def main(page: ft.Page):
                 db.ensure_connection()
                 result_list = db.fetch_all_files()
                 setPageZero()
-                refresh_list_view(list_view, result_list, page, db, paging_tv)
+                await refresh_list_view(list_view, result_list, page, db, paging_tv)
                 list_view.scroll_to(0)
 
             page.update()
@@ -209,7 +209,7 @@ def main(page: ft.Page):
         )
 
         setPageZero()
-        refresh_list_view(list_view, result_list, page, db, paging_tv)
+        await refresh_list_view(list_view, result_list, page, db, paging_tv)
 
         page.update()
 
@@ -337,10 +337,10 @@ def main(page: ft.Page):
             alignment=ft.MainAxisAlignment.CENTER
         )
 
-        def password_on_submit(e):
+        async def password_on_submit(e):
             global credential
             credential = str(password_field.value)
-            refresh()
+            await refresh()
         password_field = ft.TextField(hint_text="Password", max_lines=1,text_align=ft.alignment.center,password=True,can_reveal_password=True)
         password_field.on_submit = password_on_submit
         column.controls.append(ft.Text(value="Enter Password and press Enter",size=25,style=ft.TextStyle(weight=ft.FontWeight.BOLD)))
@@ -349,14 +349,14 @@ def main(page: ft.Page):
         page.update()
 
 
-    def refresh():
+    async def refresh():
         page.clean()
-        build_UI()
+        await build_UI()
 
-    refresh()
+    await refresh()
 
 
-def refresh_list_view(list_view: ft.ListView, list_file_entry: list, page: ft.Page, db, paging: ft.Text,
+async def refresh_list_view(list_view: ft.ListView, list_file_entry: list, page: ft.Page, db, paging: ft.Text,
                       page_number=None):
     list_view.controls.clear()
     global current_page

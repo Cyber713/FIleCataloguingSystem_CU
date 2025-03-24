@@ -1,0 +1,40 @@
+@startuml
+skinparam dpi 600
+
+class FileEntry {
+    + id : int
+    + name : str
+    + abs_path : str
+    + abs_path_hash : str
+    + type : FileType
+    + parent_id : int
+    + parent_path : str
+    + size : int
+}
+
+
+class Errors {
+}
+
+
+class DatabaseManager {
+    - __init__()
+    - _delete_directory()
+    - _insert_directory_to_db()
+    + close()
+    + delete()
+    + delete_directory()
+    + ensure_connection()
+    + fetch_all_files()
+    + hash_path()
+    + insert()
+    + search_with_keywords()
+    + selfcheck()
+    + update()
+}
+
+
+class FileType {
+}
+
+@enduml
