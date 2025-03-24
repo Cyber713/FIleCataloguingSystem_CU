@@ -220,8 +220,8 @@ async def main(page: ft.Page):
 
         directory_tf = ft.TextField(hint_text="Directory", border_color="green")
 
-        def on_dismiss(e):
-            refresh()
+        async def on_dismiss(e):
+            await refresh()
 
         delete_dialog = ft.AlertDialog(
             on_dismiss=on_dismiss,
@@ -289,7 +289,9 @@ async def main(page: ft.Page):
             repeat=True,
             animate=True
         ))
-        page.add(ft.IconButton(icon=ft.Icons.REFRESH, on_click=lambda e: refresh(), icon_size=30))
+        async def refresh_on_click(e):
+            await refresh()
+        page.add(ft.IconButton(icon=ft.Icons.REFRESH, on_click=refresh_on_click, icon_size=30))
         json_example = """
         //Example:
         {
@@ -319,10 +321,10 @@ async def main(page: ft.Page):
         ))
         page.add(ft.Text("Wrong credentials or MYSQL server is not installed"))
         page.add(ft.IconButton(icon=ft.Icons.REFRESH, on_click=lambda e: refresh(), icon_size=30))
-        def manual_password(e):
+        async def manual_password(e):
             global credential
             credential = "1"
-            refresh()
+            await refresh()
 
         page.add(ft.IconButton(icon=ft.Icons.PASSWORD, on_click= manual_password, icon_size=30))
         page.add(ft.Text("Your auto-logon maybe configured wrongly you can enter your password manually"))
@@ -405,14 +407,14 @@ async def refresh_list_view(list_view: ft.ListView, list_file_entry: list, page:
         page.update()
         await db.delete_directory(file_id)
         page.close(dialog)
-        refresh_list()
+        await refresh_list()
         page.update()
 
-    def refresh_list():
+    async def refresh_list():
         db.ensure_connection()
         new_list = db.fetch_all_files()
         setPageZero()
-        refresh_list_view(list_view, new_list, page, db, paging)
+        await refresh_list_view(list_view, new_list, page, db, paging)
         list_view.scroll_to(0)
 
     for entry in list_file_entry[start_index:]:
