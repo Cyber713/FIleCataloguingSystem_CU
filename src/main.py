@@ -11,15 +11,15 @@ current_page = 0
 files_per_page = 500
 
 
-def get_db_credentials(filepath="credentials.json"):
+def get_db_credentials(filepath="configuration.json"):
     try:
         with open(filepath, "r") as f:
-            credentials = json.load(f)
-            host = credentials.get("host")
-            port = credentials.get("port")
-            user = credentials.get("user")
-            password = credentials.get("password")
-            database = credentials.get("database")
+            configuration = json.load(f)
+            host = configuration.get("host")
+            port = configuration.get("port")
+            user = configuration.get("user")
+            password = configuration.get("password")
+            database = configuration.get("database")
             return host, port, user, password, database
     except FileNotFoundError:
         return None, None, None, None, None
@@ -280,7 +280,7 @@ async def main(page: ft.Page):
         global credential
         credential = None
         page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-        page.add(ft.Text("There was an error on credential file credentials.json please fix it and refresh"))
+        page.add(ft.Text("There was an error on credential file configuration.json please fix it and refresh"))
         anim_not_found = encode_animation("anim/anim_not_found.json")
         page.add(fl.Lottie(
             src_base64=anim_not_found,
