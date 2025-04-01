@@ -1,6 +1,7 @@
 import json
 import os
 import platform
+import pprint
 import subprocess
 from functools import partial
 import flet as ft
@@ -34,6 +35,7 @@ def setPageZero():
     current_page = 0
 
 credential = None
+password_is_correct = True
 async def main(page: ft.Page):
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.theme_mode = "dark"
@@ -41,6 +43,7 @@ async def main(page: ft.Page):
 
     async def build_UI():
         global credential
+        global password_is_correct
         page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
         header_text_style = ft.TextStyle(weight=ft.FontWeight.BOLD, size=20)
         host, port, user, password, database = get_db_credentials()
@@ -48,30 +51,25 @@ async def main(page: ft.Page):
         if host is None or port is None or user is None or database is None:
             display_credential_error()
             return
-        # if password is None:
-        #     if credential is not None:
-        #         password = credential
-        #     else:
-        #         if credential is not None:
-        #             password = credential
-        #         else:
-        #             display_password_ask()
-        #             return
+
         if credential is None:
             if password is None:
                 display_password_ask()
                 return
         else:
             password = credential
+            password_is_correct = True
 
         db = DatabaseManager(host=host, port=port, user=user, passwd=password, database=database)
         try:
             db.ensure_connection()
         except Exception:
             if password is None:
+                password_is_correct = False
                 display_password_ask()
                 return
             if credential is not None:
+                password_is_correct = False
                 display_password_ask()
                 return
             else:
@@ -196,9 +194,9 @@ async def main(page: ft.Page):
         header_row = ft.Container(
             content=ft.Row(
                 controls=[
-                    header_text_view(title_tv, ft.Icons.TITLE, 1),
-                    header_text_view(containing_folder_tv, ft.Icons.FOLDER, 3),
-                    header_text_view(size_tv, ft.Icons.STORAGE, 1),
+                    header_text_view(title_tv, ft.Icons.TITLE, 15),
+                    header_text_view(containing_folder_tv, ft.Icons.FOLDER, 30),
+                    header_text_view(size_tv, ft.Icons.STORAGE, 10),
                 ]
             ),
             margin=5,
@@ -320,7 +318,9 @@ async def main(page: ft.Page):
             animate=True
         ))
         page.add(ft.Text("Wrong credentials or MYSQL server is not installed"))
-        page.add(ft.IconButton(icon=ft.Icons.REFRESH, on_click=lambda e: refresh(), icon_size=30))
+        async def refresh_on_click(e):
+            await refresh()
+        page.add(ft.IconButton(icon=ft.Icons.REFRESH, on_click=refresh_on_click, icon_size=30))
         async def manual_password(e):
             global credential
             credential = "1"
@@ -330,6 +330,7 @@ async def main(page: ft.Page):
         page.add(ft.Text("Your auto-logon maybe configured wrongly you can enter your password manually"))
 
     def display_password_ask():
+        global password_is_correct
         page.clean()
         page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
         column = ft.Column(
@@ -345,9 +346,13 @@ async def main(page: ft.Page):
             await refresh()
         password_field = ft.TextField(hint_text="Password", max_lines=1,text_align=ft.alignment.center,password=True,can_reveal_password=True)
         password_field.on_submit = password_on_submit
-        column.controls.append(ft.Text(value="Enter Password and press Enter",size=25,style=ft.TextStyle(weight=ft.FontWeight.BOLD)))
+        column.controls.append(ft.Text(value="Enter your Database Password and press Enter",size=25,style=ft.TextStyle(weight=ft.FontWeight.BOLD)))
         column.controls.append(password_field)
         page.add(column)
+        if not password_is_correct:
+            password_field.border_color = "red"
+            column.controls.append(ft.Text("Your password is incorrect or MYSQL server is not installed or not initialized"))
+            password_field.border_width = 3
         page.update()
 
 
@@ -430,11 +435,11 @@ async def refresh_list_view(list_view: ft.ListView, list_file_entry: list, page:
             db.update(entry=FileEntry(id=entry_id, name=text_field.value))
 
         title_text_field.on_submit = lambda e, eid=entry.id, tf=title_text_field: updateFN(e, eid, tf)
-        def on_dialog_dismiss(e):
+        async def on_dialog_dismiss(e):
             dialog_show_parameters.open =False
-            refresh_list()
+            await refresh_list()
         dialog_show_parameters = ft.AlertDialog(
-            on_dismiss=lambda e: on_dialog_dismiss(e),
+            on_dismiss=on_dialog_dismiss,
             content=ft.Container(
                 border_radius=12,
                 bgcolor="#101020",
@@ -476,17 +481,17 @@ async def refresh_list_view(list_view: ft.ListView, list_file_entry: list, page:
                         content=ft.Row(
                             controls=[
                                 ft.Icon(icon, color="#4060F0", size=20),
-                                ft.Text(value=entry.name, expand=1),
+                                ft.Text(value=entry.name, expand=1,max_lines=2,size=14),
                             ]
                         ),
-                        expand=1,
+                        expand=15,
                     ),
-                    ft.Text(value=entry.parent_path if entry.parent_path else "Root Directory", expand=3),
-                    ft.Text(value=f"{FileEntry.format_bytes(entry.size)}" if entry.size else "Folder", expand=1),
+                    ft.Text(value=entry.parent_path if entry.parent_path else "Root Directory", expand=30,size=14,max_lines=2),
+                    ft.Text(value=f"{FileEntry.format_bytes(entry.size)}" if entry.size else "Folder", expand=10),
                 ]
             ),
             bgcolor="#000010",
-            height=50,
+            height=60,
             margin=5,
             padding=ft.Padding(left=15, right=15, bottom=10, top=10),
             border_radius=12,
@@ -518,14 +523,6 @@ def header_text_view(text_view: ft.Text, icon, expand) -> ft.Container:
     return ft.Container(
         content=ft.Row(controls=[ft.Icon(icon), text_view]), expand=expand, on_click=text_view.on_tap
     )
-
-
-# def restart():
-#     # python = sys.executable
-#     subprocess.Popen([sys.executable, *sys.argv])
-#     sys.exit(0)
-#
-#     # os.execl(python, python, *sys.argv)
 
 if __name__ == "__main__":
     ft.app(target=main)
