@@ -1,12 +1,11 @@
 import json
 import os
 import platform
-import pprint
 import subprocess
 from functools import partial
 import flet as ft
 import flet_lottie as fl
-from units import DatabaseManager, FileType, FileEntry, encode_animation
+from units import DatabaseManager, FileEntry, encode_animation
 
 current_page = 0
 files_per_page = 500
