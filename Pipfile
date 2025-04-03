@@ -1,8 +1,0 @@
-[requires]
-python_version = ">=3.10"
-
-[packages]
-flet = "*"
-flet-desktop = "*"
-flet-lottie = "*"
-pymysql = "*"
