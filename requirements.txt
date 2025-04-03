@@ -1,4 +1,0 @@
-flet
-flet-desktop
-flet-lottie
-pymysql
