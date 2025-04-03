@@ -1,0 +1,5 @@
+[tool.poetry.dependencies]
+python = ">=3.10"
+flet= ">=0.27"
+flet-desktop= ">=0.27"
+flet-lottie= ">=0.1"
