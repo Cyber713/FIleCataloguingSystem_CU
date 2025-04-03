@@ -219,9 +219,13 @@ async def main(page: ft.Page):
 
         async def on_dismiss(e):
             await refresh()
-
+        def on_close(e):
+            delete_dialog.open = False
+            page.close(delete_dialog)
+            page.update()
         delete_dialog = ft.AlertDialog(
             on_dismiss=on_dismiss,
+            modal=True,
             content=ft.Container(
                 bgcolor="#051015",
                 border_radius=4,
@@ -229,6 +233,7 @@ async def main(page: ft.Page):
                     tight=True,
                     controls=[ft.Text("Enter Valid Directory and press Enter", text_align=ft.alignment.center),
                               directory_tf,
+                              ft.IconButton(icon=ft.Icons.CLOSE_ROUNDED,icon_size=15,on_click=on_close)
                               ]
                 )
             ),
