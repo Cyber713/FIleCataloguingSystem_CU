@@ -99,21 +99,27 @@ class DatabaseManager:
         except pymysql.err.OperationalError as e:
             if e.args[0] == 1045:
                 self.error_code = Errors.AUTH_ERROR
+
             elif e.args[0] == 2003:
                 self.error_code = Errors.CONNECTION_ERROR
+
             else:
                 self.error_code = Errors.SOMETHING_WENT_WRONG
-        except Exception:
-            self.error_code = Errors.SOMETHING_WENT_WRONG
+        except Exception as e:
+            if e.args[0] == 1045:
+                self.error_code = Errors.AUTH_ERROR
+            else:
+                self.error_code = Errors.SOMETHING_WENT_WRONG
+
 
     def fetch_all_files(self):
         print("Fetchiing")
-        query = """SELECT f.id, f.name, f.type, f.absolute_path, f.parent_id, f.size, p.absolute_path AS parent_path 
+        query = """SELECT f.id, f.name, f.type, f.absolute_path, f.parent_id, f.size, p.absolute_path, f.absolute_path_hash AS parent_path 
                    FROM Files_And_Directories f 
                    LEFT JOIN Files_And_Directories p ON f.parent_id = p.id;"""
         self.cursor.execute(query)
         return [
-            FileEntry(id=row[0], name=row[1], type=FileType(row[2]), abs_path=row[3], parent_id=row[4], size=row[5], parent_path=row[6])
+            FileEntry(id=row[0], name=row[1], type=FileType(row[2]), abs_path=row[3], parent_id=row[4], size=row[5], parent_path=row[6],abs_path_hash=row[7])
             for row in self.cursor.fetchall()
         ]
 

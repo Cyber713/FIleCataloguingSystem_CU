@@ -2,3 +2,4 @@ pymysql
 flet
 flet-desktop
 flet-lottie
+cryptography
