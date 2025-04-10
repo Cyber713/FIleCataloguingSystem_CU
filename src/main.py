@@ -5,9 +5,7 @@ import subprocess
 from functools import partial
 import flet as ft
 import flet_lottie as fl
-from flet.core.icon import Icon
 
-from src.units import FileType
 from units import DatabaseManager, FileEntry, encode_animation
 
 current_page = 0
@@ -16,7 +14,8 @@ files_per_page = 500
 
 def get_db_credentials(filepath="configuration.json"):
     try:
-        with open(filepath, "r") as f:
+        absolute_path = os.path.join(os.path.dirname(__file__), filepath)
+        with open(absolute_path, "r") as f:
             configuration = json.load(f)
             host = configuration.get("host")
             port = configuration.get("port")
@@ -282,6 +281,8 @@ async def main(page: ft.Page):
 
     def display_credential_error():
         page.clean()
+        page.floating_action_button = None
+        page.update()
         global credential
         credential = None
         page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
@@ -313,6 +314,8 @@ async def main(page: ft.Page):
 
     def display_auth_error():
         page.clean()
+        page.floating_action_button = None
+        page.update()
         global credential
         credential = None
         page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
@@ -339,6 +342,8 @@ async def main(page: ft.Page):
     def display_password_ask():
         global password_is_correct
         page.clean()
+        page.floating_action_button = None
+        page.update()
         page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
         column = ft.Column(
             width=page.width,
@@ -365,6 +370,8 @@ async def main(page: ft.Page):
 
     async def refresh():
         page.clean()
+        page.floating_action_button = None
+        page.update()
         await build_UI()
 
     await refresh()
@@ -402,7 +409,6 @@ async def refresh_list_view(list_view: ft.ListView, list_file_entry: list, page:
             print(f"⚠️ Error opening folder: {e}")
 
     async def delete_file(e, file_id, dialog,page):
-        print(f"Deleting ID: {file_id}")
         db.ensure_connection()
         anim_loading = encode_animation("anim/anim_loading.json")
         dialog.content.content.controls[7]=fl.Lottie(
@@ -484,7 +490,7 @@ async def refresh_list_view(list_view: ft.ListView, list_file_entry: list, page:
 
         def getEntryIcon(type) -> ft.Icon:
             if type=='file':
-                return ft.Icon(ft.Icons.INSERT_DRIVE_FILE , color="#4060F0",size=20)
+                return ft.Icon(ft.Icons.INSERT_DRIVE_FILE , color="#BFAFA0",size=20)
             elif type=='directory':
                 return ft.Icon(ft.Icons.FOLDER , color="#4060F0",size=20)
 

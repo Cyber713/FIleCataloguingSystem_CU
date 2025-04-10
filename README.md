@@ -33,7 +33,15 @@ make install
 
 ### Main Entry Point
 - The main file is [`main.py`](src/main.py)
-
+- to launch easily use
+```
+make run3
+```
+or
+```
+make run
+```
+commands from root directory
 ### Database Logic & Utilities
 - Refer to [`units.py`](src/units.py)
 

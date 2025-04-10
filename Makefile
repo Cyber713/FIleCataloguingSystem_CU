@@ -1,17 +1,18 @@
-VENV_DIR := venv
-PYTHON := python3
-PIP := $(VENV_DIR)/bin/pip
-
-.PHONY: all install clean
-
 all: install
 
-$(VENV_DIR)/bin/activate:
-	$(PYTHON) -m venv $(VENV_DIR)
+install:
+	pip install --upgrade pip
+	pip install pymysql
+	pip install flet
+	pip install flet-desktop
+	pip install flet-lottie
+	pip install cryptography
+	@echo "Installation completed successfully!"
 
-install: $(VENV_DIR)/bin/activate
-	$(PIP) install --upgrade pip
-	$(PIP) install pymysql flet flet-desktop flet-lottie cryptography
+run3:
+	python3 src/main.py
 
-clean:
-	rm -rf $(VENV_DIR)
+run:
+	python src/main.py
+
+

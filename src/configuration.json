@@ -2,7 +2,6 @@
   "host": "localhost",
   "port": 3306,
   "database": "File_Management",
-  "user": "root"
-}
+  "user": "root"}
 
 

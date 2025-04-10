@@ -201,14 +201,12 @@ class DatabaseManager:
 
     def _delete_directory(self, parent_id):
         if not parent_id:
-            print("Error here")
             return
         self.cursor.execute("SELECT id FROM Files_And_Directories WHERE parent_id = %s", (parent_id,))
         child_ids = [row[0] for row in self.cursor.fetchall()]
         for child_id in child_ids:
              self._delete_directory(child_id)
         self.cursor.execute("DELETE FROM Files_And_Directories WHERE id = %s", (parent_id,))
-        print(f"DELETE FROM Files_And_Directories WHERE id = {parent_id}")
         self.connection.commit()
 
     def update(self, entry: FileEntry):
@@ -265,7 +263,8 @@ class DatabaseManager:
 
 
 def encode_animation(file_path):
-    with open(file_path, "r", encoding="utf-8") as f:
+    absolute_path = os.path.join(os.path.dirname(__file__), file_path)
+    with open(absolute_path, "r", encoding="utf-8") as f:
         json_string = f.read()
         encoded = base64.b64encode(json_string.encode("utf-8")).decode("utf-8")
         return f"{encoded}"
