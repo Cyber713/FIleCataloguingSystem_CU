@@ -1,0 +1,18 @@
+body {
+  background-color: #1e1e1e;
+  color: #cccccc;
+  font-family: 'Helvetica', sans-serif;
+}
+a {
+  color: #569cd6;
+}
+code {
+  background-color: #2d2d2d;
+  color: #9cdcfe;
+}
+pre {
+  background-color: #2d2d2d;
+  color: #dcdcdc;
+  padding: 1em;
+  overflow-x: auto;
+}
