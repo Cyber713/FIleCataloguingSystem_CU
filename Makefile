@@ -1,4 +1,4 @@
-all: install
+all: install run3
 
 install:
 	pip install --upgrade pip
