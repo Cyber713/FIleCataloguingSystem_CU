@@ -488,7 +488,6 @@ async def refresh_list_view(list_view: ft.ListView, list_file_entry: list, page:
             elif type=='directory':
                 return ft.Icon(ft.Icons.FOLDER , color="#4060F0",size=20)
 
-        print(entry.type)
         item = ft.Container(
             content=ft.Row(
                 controls=[

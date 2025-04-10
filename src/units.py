@@ -113,7 +113,6 @@ class DatabaseManager:
 
 
     def fetch_all_files(self):
-        print("Fetchiing")
         query = """SELECT f.id, f.name, f.type, f.absolute_path, f.parent_id, f.size, p.absolute_path, f.absolute_path_hash AS parent_path 
                    FROM Files_And_Directories f 
                    LEFT JOIN Files_And_Directories p ON f.parent_id = p.id;"""
