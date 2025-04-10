@@ -5,6 +5,9 @@ import subprocess
 from functools import partial
 import flet as ft
 import flet_lottie as fl
+from flet.core.icon import Icon
+
+from src.units import FileType
 from units import DatabaseManager, FileEntry, encode_animation
 
 current_page = 0
@@ -431,8 +434,6 @@ async def refresh_list_view(list_view: ft.ListView, list_file_entry: list, page:
             break
         displayed_entries += 1
 
-        icon = ft.Icons.INSERT_DRIVE_FILE if entry.type == "file" else ft.Icons.FOLDER
-
         title_text_field = ft.TextField(value=entry.name, border_color="yellow")
 
         def updateFN(e, entry_id, text_field):
@@ -477,14 +478,24 @@ async def refresh_list_view(list_view: ft.ListView, list_file_entry: list, page:
             d.open = True
             page.add(d)
             page.update()
+        # icon =
+        # if entry.type == FileType.FILE else ft.Icons.FOLDER
+        # partial(ft.Text,)
 
+        def getEntryIcon(type) -> ft.Icon:
+            if type=='file':
+                return ft.Icon(ft.Icons.INSERT_DRIVE_FILE , color="#4060F0",size=20)
+            elif type=='directory':
+                return ft.Icon(ft.Icons.FOLDER , color="#4060F0",size=20)
+
+        print(entry.type)
         item = ft.Container(
             content=ft.Row(
                 controls=[
                     ft.Container(
                         content=ft.Row(
                             controls=[
-                                ft.Icon(icon, color="#4060F0", size=20),
+                                getEntryIcon(entry.type.value),
                                 ft.Text(value=entry.name, expand=1,max_lines=2,size=14),
                             ]
                         ),
